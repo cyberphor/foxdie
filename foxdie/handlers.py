@@ -1,20 +1,34 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from foxdie.types import FOXDIEProtocol
+from socket import AF_INET, SOCK_STREAM, socket
+from ipaddress import IPv4Address
 
 @dataclass
-class FOXDIEHandler(ABC):
-    protocol: FOXDIEProtocol
+class Listener:
+    """Listener"""
+    address: IPv4Address = field(default = "127.0.0.1")
+    port: int = field(default = 80)
 
     def __post_init__(self):
-        self.protocol = FOXDIEProtocol[self.protocol.name].name
-
-    @abstractmethod
-    def start(self):
-        print(self.protocol)
+        plug = (self.address, self.port)
+        listener = socket(AF_INET, SOCK_STREAM)
+        listener.bind(plug)
 
 @dataclass
-class Foo(FOXDIEHandler):
-    def start(self):
-        super().start() # return a 'start' func to parent class
-        print("Protocol: " + self.protocol)
+class Handler():
+    listeners: list[Listener]
+
+    def start():
+        """Start handler."""
+        print("Started listener")
+
+    def stop():
+        """Stop handler."""
+        print("Stopped listener")
+
+    def start_listener(self):
+        """Start listener."""
+        print("Started listener")
+
+    def stop_listener(self):
+        """Stop listener."""
+        print("Stopped listener")

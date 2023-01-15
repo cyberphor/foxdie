@@ -1,9 +1,8 @@
-from dataclasses import dataclass, field
-from foxdie.handlers import FOXDIEHandler
+from foxdie.handlers import Handler, Listener
 
-@dataclass
-class FOXDIEServer:
-    name: str = field(default = None)
+class Server:
+    handlers: list[Handler]
 
-    def start_handler(self, h: FOXDIEHandler):
-        h.start()
+    def start_handler(self, handler: Handler):
+        handler.start()
+        handler.stop()
