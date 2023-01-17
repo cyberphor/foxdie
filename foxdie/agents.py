@@ -4,25 +4,20 @@ from ipaddress import IPv4Address
 
 @dataclass
 class Agent:
-    address: IPv4Address = field(default = "127.0.0.1")
-    port: int = field(default = 80) 
-
-    def __post_init__(self):
-        self.plug = (self.address, self.port)
-        self.network = socket(AF_INET, SOCK_STREAM)
-
-    def connect(self):
-        self.network.connect(self.plug) 
-        message = input("Send: ")
+    def connect(self, address: IPv4Address, port: int):
+        self.plug = (str(address), port)
+        self.socket = socket(AF_INET, SOCK_STREAM)    
+        self.socket.connect(self.plug) 
+        message = input(f"[FOXDIE: {self.socket.getsockname()[1]}] ")
         while True:
             try: 
-                self.network.send(message.encode())
-                data = self.network.recv(1024).decode()
+                self.socket.send(message.encode())
+                data = self.socket.recv(1024).decode()
                 if data.lower() == "exit":
-                    raise Exception("Listener disconnected")
+                    raise Exception(f"[FOXDIE: {port}] Disconnected.")
                 else:
-                    print(f"Recieved: {data}")
-                    message = input("Send: ")
+                    print(f"[FOXDIE: {port}] {data}")
+                    message = input(f"[FOXDIE: {self.socket.getsockname()[1]}] ")
             except:
-                self.network.close()
+                self.socket.close()
                 return False
