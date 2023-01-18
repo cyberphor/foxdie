@@ -1,57 +1,47 @@
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address
-from socket import socket, AF_INET, SOCK_STREAM
+from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from threading import Thread
 from typing import List
 
 @dataclass
 class Server:
-    address: IPv4Address = field(default = None)
+    ip: IPv4Address = field(default = None)
     port: int = field(default = None)
-    threads: List[Thread] = field(default_factory = list, init = False)
+    threads: list[Thread] = field(default_factory = list, init = None)
 
     def __post_init__(self):
-        self.plug = (str(self.address), self.port)
-            
-    def start(self):
-        def stop(self):
-            self.socket.close()
-            print(f"[FOXDIE: {self.port}] Stopped listening.")
-            for thread in self.threads:
-                thread.join()
-                print(f"[FOXDIE: {thread.name}] Disconnected.")
-            return False
-
+        self.address = (str(self.ip), self.port)
         self.socket = socket(AF_INET, SOCK_STREAM)
-        self.socket.bind(self.plug) 
-        self.socket.listen(2)
+        self.socket.bind(self.address)
+        self.socket.listen(5)
+        self.socket.settimeout(60)
+
+    def handle(self, agent_connection, agent_port):
+        agent_request = agent_connection.recv(1024).decode()
+        print(f"[FOXDIE: {agent_port}] {agent_request}")
+        server_reply = "Thanks bye!".encode()
+        agent_connection.send(server_reply)
+        agent_connection.close()
+
+    def listen(self):
         print(f"[FOXDIE: {self.port}] Listening.")
-        try:
-            while True:
-                agent_connection, agent_plug = self.socket.accept()
-                agent_port = agent_plug[1]
-                agent_connection.settimeout(60)
+        while True:
+            try:
+                agent_socket, agent_address = self.socket.accept()
+                agent_port = agent_address[1]
                 thread = Thread(
                     name = agent_port, 
                     target = self.handle, 
-                    args = (agent_connection, agent_port)
+                    args = (agent_socket, agent_port)
                 )
                 thread.start()
                 self.threads.append(thread)
-                print(f"[FOXDIE: {thread.name}] Connected.")
-        except:
-            stop()
-
-    def handle(self, agent_connection, agent_port):
-        try:
-            data = agent_connection.recv(1024).decode()
-            if data.lower() == "exit":
-                raise Exception(f"[FOXDIE: {agent_port}] Disconnected.")
-            else:
-                print(f"[FOXDIE: {agent_port}] {data}")
-                response = input(f"[FOXDIE: {self.port}] ")
-                agent_connection.send(response.encode())
-        except:
-            agent_connection.close()
-            self.threads[agent_port].join
-            return False
+                print(f"[FOXDIE: {agent_port}] Connected.")
+            except TimeoutError as e:
+                print(f"[FOXDIE: {self.port}] {e}")
+                break
+            except KeyboardInterrupt:
+                break
+        self.socket.close()
+        print(f"[FOXDIE: {self.port}] Stopped listening.")
