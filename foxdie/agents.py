@@ -8,15 +8,17 @@ class Agent:
         self.address = (str(ip), port)
         self.socket = socket(AF_INET, SOCK_STREAM)    
         self.socket.connect(self.address) 
+        print(f"[FOXDIE: {port}] connected")
         while True:
-            try: 
-                message = input(f"[FOXDIE: {self.socket.getsockname()[1]}] ")
-                self.socket.send(message.encode())
+            try:
+                agent_port = self.socket.getsockname()[1]
+                request = input(f"[FOXDIE: {agent_port}] ")
+                if request == "exit":
+                    raise Exception(f"[FOXDIE: {agent_port}]")
+                self.socket.send(request.encode())
                 reply = self.socket.recv(1024).decode()
                 if reply:
                     print(f"[FOXDIE: {port}] {reply}")
-                else:
-                    break
             except:
                 break
         self.socket.close()

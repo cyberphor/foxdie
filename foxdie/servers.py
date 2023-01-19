@@ -12,24 +12,30 @@ class Server:
 
     def __post_init__(self):
         self.address = (str(self.ip), self.port)
-        self.socket = socket(AF_INET, SOCK_STREAM)
-        self.socket.bind(self.address)
-        self.socket.listen(5)
-        self.socket.settimeout(60)
 
     def handle(self, agent_connection, agent_port):
-        agent_request = agent_connection.recv(1024).decode()
-        print(f"[FOXDIE: {agent_port}] {agent_request}")
-        server_reply = "Thanks bye!".encode()
-        agent_connection.send(server_reply)
+        while True:
+            agent_request = agent_connection.recv(1024).decode()
+            print(f"[FOXDIE: {agent_port}] {agent_request}")
+            if agent_request == "exit":
+                break
+            server_reply = "Thanks bye!"
+            print(f"[FOXDIE: {self.port}] {server_reply}")
+            agent_connection.send(server_reply.encode())
+        print(f"[FOXDIE: {agent_port}] disconnected")
         agent_connection.close()
 
     def listen(self):
-        print(f"[FOXDIE: {self.port}] Listening.")
+        s = socket(AF_INET, SOCK_STREAM)
+        s.bind(self.address)
+        s.listen(5)
+        s.settimeout(120)
+        print(f"[FOXDIE: {self.port}] listening")
         while True:
             try:
-                agent_socket, agent_address = self.socket.accept()
+                agent_socket, agent_address = s.accept()
                 agent_port = agent_address[1]
+                print(f"[FOXDIE: {agent_port}] connected")
                 thread = Thread(
                     name = agent_port, 
                     target = self.handle, 
@@ -37,11 +43,8 @@ class Server:
                 )
                 thread.start()
                 self.threads.append(thread)
-                print(f"[FOXDIE: {agent_port}] Connected.")
-            except TimeoutError as e:
-                print(f"[FOXDIE: {self.port}] {e}")
+            except :
+                print(f"[FOXDIE: {self.port}] error")
                 break
-            except KeyboardInterrupt:
-                break
-        self.socket.close()
-        print(f"[FOXDIE: {self.port}] Stopped listening.")
+        s.close()
+        print(f"[FOXDIE: {self.port}] stopped listening")
