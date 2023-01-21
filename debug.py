@@ -1,28 +1,29 @@
-from threading import Thread, current_thread
-from time import sleep
+from socket import socket, AF_INET, SOCK_STREAM
+from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
+
+def handler(agent_socket: socket, agent_port: int):
+    while True:
+        agent_request = agent_socket.recv(1024)
+        print(agent_request)
+        if not agent_request:
+            agent_socket.close()
+            break
+        agent_socket.sendall(agent_port)
 
 def main():
-    threads = []
-    try:
-        element_count = 6
-        for element in range(0, element_count):
-            thread = Thread(target = do_something, args=(element, element_count))
-            thread.start()
-    except KeyboardInterrupt as e:
-        for thread in threads:
-            thread.alive = False
-            thread.join()
-        exit(e)
-
-def do_something(element: int, element_count: int):
-    thread = current_thread()
-    thread.alive = True
-    while thread.is_alive():
-        try:
-            thread.join(0.5)
-        print(f"[Thread: {element}/{element_count}] started doing something")
-        sleep(2)
-        print(f"[Thread: {element}/{element_count}] stopped doing something")
+    ip = "127.0.0.1"
+    port = 80
+    address = (str(ip), port)
+    with socket(AF_INET, SOCK_STREAM) as listener:
+        listener.bind(address)
+        listener.listen(5)
+        agent_socket, agent_port = listener.accept()
+        agent_thread = Thread(
+            name = agent_port, 
+            target = handler, 
+            args = (agent_socket, agent_port)
+        )
 
 if __name__ == "__main__":
 	main()
