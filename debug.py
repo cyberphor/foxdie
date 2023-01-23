@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address
 from threading import Event, Thread
-from time import sleep
-from socket import socket, AF_INET, SOCK_STREAM
+from time import sleep, time
+from socket import AF_INET, SOCK_STREAM, socket
 
 @dataclass
 class Server:
@@ -10,22 +10,23 @@ class Server:
     port: int = field(default = 80)
 
     def __post_init__(self):
-        self.sun = Event()
         self.address = (str(self.ip), self.port)
+        self.done = False
 
     def handler(self, agent_socket: socket, agent_port: int):
         print(f"[FOXDIE: {agent_port}] connected")
-        while not self.sun.is_set():
-            # TODO: set timer to close socket if not data is recv in 60 seconds
+        timeout = time() + 30
+        while not self.done:
             try:
-                agent_request = agent_socket.recv(1024).decode()
-                if agent_request:
-                    print(f"[FOXDIE: {agent_port}] {agent_request}")
-                    agent_socket.send("OK".encode())
-            except BlockingIOError:
-                pass
-            except ConnectionError:
-                break
+                if time() > timeout: break
+                else:
+                    agent_request = agent_socket.recv(1024).decode()
+                    if agent_request:
+                        print(f"[FOXDIE: {agent_port}] {agent_request}")
+                        agent_socket.send("OK".encode())
+                        timeout = time() + 30
+            except BlockingIOError: pass
+            except ConnectionError: break
         print(f"[FOXDIE: {agent_port}] disconnected")
 
     def dispatch(self):
@@ -34,7 +35,7 @@ class Server:
         listener.listen(5)
         listener.setblocking(False)
         print(f"[FOXDIE: {self.port}] started listening")
-        while not self.sun.is_set():
+        while not self.done:
             try:
                 agent_socket, agent_address = listener.accept()
                 agent_port = agent_address[1]
@@ -44,8 +45,7 @@ class Server:
                     args = [agent_socket, agent_port]
                 )
                 thread.start()
-            except BlockingIOError:
-                pass
+            except BlockingIOError: pass
         listener.close()
         print(f"[FOXDIE: {self.port}] stopped listening")
 
@@ -53,10 +53,9 @@ class Server:
         foxdie = Thread(target = self.dispatch)
         foxdie.start()
         try:
-            while not self.sun.is_set():
-                sleep(0.5)
-        except KeyboardInterrupt:
-            self.sun.set()
+            while not self.done: sleep(0.5)
+        except KeyboardInterrupt: 
+            self.done = True
         foxdie.join()
 
 def main():
