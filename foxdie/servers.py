@@ -1,63 +1,66 @@
 from dataclasses import dataclass, field
 from ipaddress import IPv4Address
-from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
-from threading import Thread, current_thread
-from typing import List
+from socket import AF_INET, SOCK_STREAM, socket
+from threading import Thread, Event
+from time import sleep, time
 
 @dataclass
 class Handler:
-    """Handler"""
-    agent_connection: socket
-    agent_port: int
-    agent_thread = current_thread()
-    while agent_thread.is_alive:
-        agent_request = agent_connection.recv(1024).decode()
-        if agent_request:
-            print(f"[FOXDIE: {agent_port}] {agent_request}")
-            server_reply = "OK"
-            agent_connection.send(server_reply.encode())
-    agent_connection.close()
+    killswitch: Event = field(default = None, init = True)
+    agent_socket: socket = field(default = None, init = True)
+    agent_port: int = field(default = None, init = True)
+    def __post_init__(self):
+        print(f"[FOXDIE: {self.agent_port}] connected")
+        ONE_MINUTE = time() + 60
+        while not self.killswitch.is_set():
+            try:
+                if time() > ONE_MINUTE: break
+                agent_request = self.agent_socket.recv(1024).decode()
+                if agent_request:
+                    print(f"[FOXDIE: {self.agent_port}] {agent_request}")
+                    self.agent_socket.send("OK".encode())
+                    ONE_MINUTE = time() + 60
+            except BlockingIOError: pass
+            except ConnectionError: break
+        print(f"[FOXDIE: {self.agent_port}] disconnected")
 
 @dataclass
-class Listener(socket):
-    """Listener"""
-    ip: IPv4Address
-    port: int
-
-    def __post_init__(self):
+class Listener:
+    killswitch: Event = field(default = None, init = True)
+    ip: IPv4Address = field(default = None, init = True)
+    port: int = field(default = None, init = True)
+    handler: Handler = field(default = None, init = True)
+    def start(self):
         self.address = (str(self.ip), self.port)
-        self.bind(self.address)
-        self.listen(5)
-        self.setblocking(False)
-        print(f"[FOXDIE: {self.port}] is listening")
-        while True:
+        self.socket = socket(AF_INET, SOCK_STREAM)
+        self.socket.bind(self.address)
+        self.socket.listen(5)
+        self.socket.setblocking(False)
+        print(f"[FOXDIE: 80] started listening")
+        while not self.killswitch.is_set():
             try:
-                agent_socket, agent_address = self.accept()
+                agent_socket, agent_address = self.socket.accept()
                 agent_port = agent_address[1]
-                print(f"[FOXDIE: {self.port}] connected from {agent_port}")
-                agent_thread = Thread(
-                    name = agent_port, 
-                    target = self.handler, 
-                    args = (agent_socket, agent_port)
+                thread = Thread(
+                    name = agent_port,
+                    target = self.handler,
+                    args = [self.killswitch, agent_socket, agent_port]
                 )
-                agent_thread.start()
-                self.threads.append(agent_thread)
-            except BlockingIOError as e:
-                pass
-            except KeyboardInterrupt:
-                for thread in self.threads:
-                    thread.alive = False
-                    thread.join()
-                break
-        self.close()
-        print(f"[FOXDIE: {self.port}] stopped listening")
+                thread.start()
+            except BlockingIOError: pass
+        self.socket.close()
+        print(f"[FOXDIE: 80] stopped listening")
 
 @dataclass
 class Server:
-    ip: IPv4Address = field(default = None)
-    port: int = field(default = None)
-    threads: list[Thread] = field(default_factory = list, init = None)
-
-    def __post_init__(self):
-        self.address = (str(self.ip), self.port)
-        self.listener = Listener(self.address)
+    killswitch: Event = field(default = None, init = True)
+    listener: Listener = field(default = None, init = True)
+    def start(self):
+        try:
+            c2 = Thread(target = self.listener.start)
+            c2.start()
+            while not self.killswitch.is_set(): 
+                sleep(0.5)
+        except KeyboardInterrupt: 
+            self.killswitch.set()
+        c2.join()
