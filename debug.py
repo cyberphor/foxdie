@@ -6,7 +6,6 @@ def main():
     server = Server(
         killswitch = event,
         listener = Listener(
-            killswitch = event,
             ip = "127.0.0.1", 
             port = 80, 
             handler = Handler

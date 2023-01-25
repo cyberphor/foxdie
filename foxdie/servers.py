@@ -2,13 +2,14 @@ from dataclasses import dataclass, field
 from ipaddress import IPv4Address
 from socket import AF_INET, SOCK_STREAM, socket
 from threading import Thread, Event
+from typing import Any
 from time import sleep, time
 
 @dataclass
 class Handler:
-    killswitch: Event = field(default = None, init = True)
-    agent_socket: socket = field(default = None, init = True)
-    agent_port: int = field(default = None, init = True)
+    killswitch: Event = field(default = None)
+    agent_socket: socket = field(default = None)
+    agent_port: int = field(default = None)
     def __post_init__(self):
         print(f"[FOXDIE: {self.agent_port}] connected")
         ONE_MINUTE = time() + 60
@@ -26,10 +27,18 @@ class Handler:
 
 @dataclass
 class Listener:
-    killswitch: Event = field(default = None, init = True)
-    ip: IPv4Address = field(default = None, init = True)
-    port: int = field(default = None, init = True)
-    handler: Handler = field(default = None, init = True)
+    server: Any = field(default = None)
+    killswitch: Event = field(default = None)
+    ip: IPv4Address = field(default = None)
+    port: int = field(default = None)
+    handler: Handler = field(default = None)
+
+    def __post_init__(self):
+        if self.server:
+            self.killswitch = self.server.killswitch
+        elif self.killswitch == None:
+            self.killswitch = Event()
+
     def start(self):
         self.address = (str(self.ip), self.port)
         self.socket = socket(AF_INET, SOCK_STREAM)
@@ -53,8 +62,8 @@ class Listener:
 
 @dataclass
 class Server:
-    killswitch: Event = field(default = None, init = True)
-    listener: Listener = field(default = None, init = True)
+    killswitch: Event = field(default = None)
+    listener: Listener = field(default = None)
     def start(self):
         try:
             c2 = Thread(target = self.listener.start)
@@ -63,4 +72,4 @@ class Server:
                 sleep(0.5)
         except KeyboardInterrupt: 
             self.killswitch.set()
-        c2.join()
+            c2.join()
