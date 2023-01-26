@@ -1,17 +1,12 @@
-from threading import Event
 from foxdie.servers import Server, Listener, Handler
 
 def main():
-    event = Event()
+    listener = Listener(ip = "127.0.0.1", port = 80)
+    handler = Handler()
     server = Server(
-        killswitch = event,
-        listener = Listener(
-            ip = "127.0.0.1", 
-            port = 80, 
-            handler = Handler
-        )
+        workers = {listener: handler}
     )
-    server.start()
+    server.bar()
 
 if __name__ == "__main__":
     main()

