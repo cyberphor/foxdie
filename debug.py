@@ -1,12 +1,8 @@
-from foxdie.servers import Server, Listener, Handler
+from foxdie.servers import Server
 
 def main():
-    listener = Listener(ip = "127.0.0.1", port = 80)
-    handler = Handler()
-    server = Server(
-        workers = {listener: handler}
-    )
-    server.bar()
+    server = Server(ip = "127.0.0.1", port = 80)
+    server.start()
 
 if __name__ == "__main__":
     main()
