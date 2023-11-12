@@ -11,17 +11,10 @@ if __name__ == "__main__":
     parser.add_argument("-c", "--command", type = str, choices = ["get", "post", "put", "head", "delete", "patch", "options"])
     args = parser.parse_args()
     if args.mode == "server":
-        server = Server(
-            ip = args.ip_address,
-            port = args.port
-        )
+        server = Server(ip = args.ip_address, port = args.port)
         server.start()
     elif args.mode == "agent":
-        agent = Agent(
-            server_ip = args.ip_address,
-            server_port = args.port,
-            request = args.command
-        )
+        agent = Agent(server_ip = args.ip_address, server_port = args.port, request = args.command)
         agent.start()
     else:
         parser.print_help()
