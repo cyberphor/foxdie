@@ -1,4 +1,4 @@
-from foxdie.servers import Server
+from foxdie.server import Server
 
 def main():
     server = Server(ip = "127.0.0.1", port = 80)

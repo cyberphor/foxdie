@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
-from foxdie.agents import Agent
-from foxdie.servers import Server
+from foxdie.agent import Agent
+from foxdie.server import Server
 from ipaddress import IPv4Address
 
 if __name__ == "__main__":
