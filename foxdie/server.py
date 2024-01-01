@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from foxdie.payloads import payloads
+from foxdie.payload import payloads
 from ipaddress import IPv4Address
 from socket import AF_INET, SOCK_STREAM, socket
 from threading import Thread, Event

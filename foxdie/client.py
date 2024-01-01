@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from foxdie.payloads import payloads
+from foxdie.payload import payloads
 from ipaddress import IPv4Address
 from socket import AF_INET, SOCK_STREAM, socket
 
 @dataclass
-class Agent:
+class Client:
     server_ip: IPv4Address
     server_port: int 
     request: str

@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from foxdie.agent import Agent
+from foxdie.client import Agent
 from foxdie.server import Server
 from ipaddress import IPv4Address
 
